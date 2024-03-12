@@ -114,6 +114,7 @@ class _GameBoardState extends State<GameBoard> {
           } else {
             currentCol += 1;
           }
+
           break;
       }
 
