@@ -6,6 +6,7 @@ import 'package:nonogram_puzzle/components/block.dart';
 import 'package:nonogram_puzzle/components/border_setting.dart';
 import 'package:nonogram_puzzle/components/stage_data_class.dart';
 import 'components/key_control.dart';
+import 'components/stage_size.dart';
 
 class GameBoard extends StatefulWidget {
   final StageData deliveryData;
@@ -42,7 +43,7 @@ class _GameBoardState extends State<GameBoard> {
     stageHW = widget.deliveryData.hw;
     stageCheck = List.generate(
       stageHW,
-      (index) => List<int>.filled(stageHW, 0),
+          (index) => List<int>.filled(stageHW, 0),
     );
     _initializeBackgroundBoard();
   }
@@ -51,7 +52,7 @@ class _GameBoardState extends State<GameBoard> {
     setState(() {
       double selectBorder = 2.0;
       BorderSettingClass borders =
-          borderSetting(currentRow, currentCol, stageHW);
+      borderSetting(currentRow, currentCol, stageHW);
       colorBoard[currentRow][currentCol] = BoardBlock(
           backgroundColor: stageCheck[currentRow][currentCol],
           blockColor: Colors.black,
@@ -75,7 +76,7 @@ class _GameBoardState extends State<GameBoard> {
   void keyboardControl(String arrow) {
     setState(() {
       BorderSettingClass borders =
-          borderSetting(currentRow, currentCol, stageHW);
+      borderSetting(currentRow, currentCol, stageHW);
       double selectBorder = 2.0;
 
       colorBoard[currentRow][currentCol] = BoardBlock(
@@ -114,7 +115,6 @@ class _GameBoardState extends State<GameBoard> {
           } else {
             currentCol += 1;
           }
-
           break;
       }
 
@@ -143,9 +143,10 @@ class _GameBoardState extends State<GameBoard> {
   void _initializeBackgroundBoard() {
     List<List<Widget?>> newBackgroundBoard = List.generate(
         stageHW,
-        (index) => List.generate(
+            (index) =>
+            List.generate(
               stageHW,
-              (index) => null,
+                  (index) => null,
             ));
 
     Color cr;
@@ -196,7 +197,7 @@ class _GameBoardState extends State<GameBoard> {
               ),
             ),
           ),
-          child: Image.asset("assets/img/empty_block.png"),
+          child: Image.asset("assets/img/ban_gray.png"),
         );
 
         // cr = Colors.grey;
@@ -216,7 +217,10 @@ class _GameBoardState extends State<GameBoard> {
 
   @override
   Widget build(BuildContext context) {
-    screenSize = MediaQuery.of(context).size;
+    screenSize = MediaQuery
+        .of(context)
+        .size;
+    double size = (getScreeningSize(screenSize)) / 4;
 
     return Scaffold(
       body: Center(
@@ -224,11 +228,11 @@ class _GameBoardState extends State<GameBoard> {
           shortcuts: const <ShortcutActivator, Intent>{
             SingleActivator(LogicalKeyboardKey.arrowUp): IncrementIntentUP(),
             SingleActivator(LogicalKeyboardKey.arrowDown):
-                IncrementIntentDOWN(),
+            IncrementIntentDOWN(),
             SingleActivator(LogicalKeyboardKey.arrowLeft):
-                IncrementIntentLEFT(),
+            IncrementIntentLEFT(),
             SingleActivator(LogicalKeyboardKey.arrowRight):
-                IncrementIntentRIGHT(),
+            IncrementIntentRIGHT(),
             SingleActivator(LogicalKeyboardKey.keyZ): IncrementIntentZ(),
             SingleActivator(LogicalKeyboardKey.keyX): IncrementIntentX(),
           },
@@ -249,70 +253,100 @@ class _GameBoardState extends State<GameBoard> {
             },
             child: Focus(
               autofocus: true,
-              child: SizedBox(
-                width: screenSize.width > screenSize.height
-                    ? screenSize.width / 2 > 400
-                        ? screenSize.width / 2
-                        : 400
-                    : screenSize.height / 2 > 400
-                        ? screenSize.height / 2
-                        : 400,
-                height: screenSize.height > screenSize.width
-                    ? screenSize.height / 2 > 400
-                        ? screenSize.height / 2
-                        : 400
-                    : screenSize.width / 2 > 400
-                        ? screenSize.width / 2
-                        : 400,
-                child: Column(
-                  children: [
-                    Flexible(
-                      flex: 1,
-                      child: Row(
+              child: SingleChildScrollView(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Column(
+                    children: [
+                      Row(
                         children: [
-                          Flexible(
-                            flex: 1,
-                            child: Container(color: Colors.redAccent,),
+                          Container(
+                            height: size,
+                            width: size,
+                            color: Colors.redAccent,
+                            child: Text(
+                                "size: $size hegit: ${screenSize
+                                    .height} wight: ${screenSize.width}"),
                           ),
-                          Flexible(
-                              flex: 2,
-                              child: Container(color: Colors.blueAccent,))
-                        ],
-                      ),
-                    ),
-                    Flexible(
-                      flex: 2,
-                      child: Row(
-                        children: [
-                          Flexible(
-                            flex: 1,
-                            child: Container(
-                              color: Colors.greenAccent,
+                          SizedBox(
+                            height: size,
+                            width: size*3,
+                            child: GridView.builder(
+                              itemCount: stageHW * (stageHW ~/ 2),
+                              physics: const NeverScrollableScrollPhysics(),
+                              gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: stageHW,
+                                  childAspectRatio: 3/2),
+                              itemBuilder: (context, index) {
+                                int row = index ~/ stageHW;
+                                int col = index % stageHW;
+                                return Container(
+                                  color: Colors.blueAccent,
+                                  child: Center(
+                                    child: Text(
+                                      "${index%10}",
+                                      style: TextStyle(fontSize: (size / 12),color: Colors.yellowAccent),
+                                      textAlign: TextAlign.right, // 가로 정렬 오른쪽
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ),
-                          Flexible(
-                            flex: 2,
-                            child: SizedBox(
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          SizedBox(
+                              height: size * 3,
+                              width: size,
                               child: GridView.builder(
-                                itemCount: stageHW * stageHW,
-                                physics: const NeverScrollableScrollPhysics(),
-                                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: stageHW),
-                                itemBuilder: (context, index) {
-                                  int row = index ~/ stageHW;
-                                  int col = index % stageHW;
+                              itemCount: stageHW * (stageHW ~/ 2),
+                              physics: const NeverScrollableScrollPhysics(),
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: stageHW ~/ 2,
+                                  childAspectRatio: 2/3),
+                              itemBuilder: (context, index) {
+                                int row = index ~/ stageHW;
+                                int col = index % stageHW;
+                                return Container(
+                                  color: Colors.greenAccent,
+                                  child: Center(
+                                    child: Text(
+                                      "${index%10}",
+                                      style: TextStyle(fontSize: (size / 12),color: Colors.orange),
+                                      textAlign: TextAlign.right, // 가로 정렬 오른쪽
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          SizedBox(
+                            height: size * 3,
+                            width: size * 3,
+                            child: GridView.builder(
+                              itemCount: stageHW * stageHW,
+                              physics: const NeverScrollableScrollPhysics(),
+                              gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: stageHW),
+                              itemBuilder: (context, index) {
+                                int row = index ~/ stageHW;
+                                int col = index % stageHW;
 
-                                  return GestureDetector(
-                                      onTap: () => touchControl(row, col),
-                                      child: colorBoard[row][col]);
-                                },
-                              ),
+                                return GestureDetector(
+                                    onTap: () => touchControl(row, col),
+                                    child: colorBoard[row][col]);
+                              },
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

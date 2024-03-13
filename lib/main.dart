@@ -26,6 +26,8 @@ class TestScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Size screenSize = MediaQuery.of(context).size;
+
     return Scaffold(
       body: Center(
         child: ElevatedButton(
@@ -34,7 +36,7 @@ class TestScreen extends StatelessWidget {
             Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) => GameBoard(deliveryData: StageData(1,stageHW!,stageDataList!)),));
             //print("1 = $stageDataList 2 = $stageHW");
           },
-          child: Text("next"),
+          child: Text("next ${(screenSize.width / 40).roundToDouble() * 40}"),
         ),
       ),
     );
