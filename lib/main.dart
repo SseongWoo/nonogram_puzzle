@@ -33,7 +33,7 @@ class TestScreen extends StatelessWidget {
         child: ElevatedButton(
           onPressed: (){
             pushData();
-            Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) => GameBoard(deliveryData: StageData(1,stageHW!,stageDataList!)),));
+            Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) => GameBoard(deliveryData: StageData(3,stageHW!,stageDataList!)),));
             //print("1 = $stageDataList 2 = $stageHW");
           },
           child: Text("next ${(screenSize.width / 40).roundToDouble() * 40}"),
