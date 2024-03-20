@@ -41,13 +41,11 @@ TextStyle _getStyleForVariable(int index , double size, bool correct) {
     return TextStyle(color: Colors.grey, fontSize: size / 8);
   }
   else{
-    switch (index~/10) {
-      case 0:
-        return TextStyle(color: Colors.white, fontSize: size / 8);
-      case 1:
-        return TextStyle(color: Colors.yellowAccent, fontSize: size / 8);
-      default:
-        return TextStyle(color: Colors.grey, fontSize: size / 8);
+    if(index < 10){
+      return TextStyle(color: Colors.white, fontSize: size / 8);
+    }
+    else {
+      return TextStyle(color: Colors.yellowAccent, fontSize: size / 8);
     }
   }
 }
