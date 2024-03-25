@@ -33,6 +33,13 @@
   <link rel="manifest" href="manifest.json">
 
   <script>
+    function disableRightClick(event) {
+      event.preventDefault(); // 기본 이벤트를 취소하여 우클릭 동작을 막음
+    }
+    // 문서가 로드될 때 우클릭 이벤트를 설정
+    document.addEventListener('contextmenu', disableRightClick);
+
+
     // The value below is injected by flutter build, do not touch.
     const serviceWorkerVersion = null;
   </script>

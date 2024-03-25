@@ -1,12 +1,19 @@
+import 'dart:ui';
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:nonogram_puzzle/components/block.dart';
 import 'package:nonogram_puzzle/components/border_setting.dart';
+import 'package:nonogram_puzzle/components/buttonData.dart';
 import 'package:nonogram_puzzle/components/stage_data_class.dart';
 import 'package:nonogram_puzzle/components/stage_number.dart';
 import 'components/block_color.dart';
 import 'components/key_control.dart';
 import 'components/stage_size.dart';
+
+//라이프, 승리이벤트, 메뉴버튼, 시간 혹은 점수, 마우스 조작
 
 class GameBoard extends StatefulWidget {
   final StageData deliveryData;
@@ -26,6 +33,7 @@ class _GameBoardState extends State<GameBoard> {
 
   late int stageSize;
   late int stageNumber;
+  late double bodySize;
 
   List<LineNumClass> newNumRow = [];
   List<LineNumClass> newNumCol = [];
@@ -40,9 +48,11 @@ class _GameBoardState extends State<GameBoard> {
   int selectedCol = 0;
 
   double selectBorder = 2.0;
+  late double containerSize;
 
   bool zKey = false;
   bool xKey = false;
+  bool choiceButton = true;
 
   @override
   void initState() {
@@ -54,11 +64,17 @@ class _GameBoardState extends State<GameBoard> {
       stageSize,
       (index) => List<int>.filled(stageSize, 0),
     );
-
     _newGetLineNumRow();
     _newGetLineNumCol();
     _initializeMainBoard();
     _checkBoardLine();
+  }
+
+  void saveData(){
+
+  }
+  void loadData(){
+
   }
 
   void cursor(int row, int col, bool check, bool img) {
@@ -97,17 +113,23 @@ class _GameBoardState extends State<GameBoard> {
     });
   }
 
-  void handleKeyEvent(RawKeyEvent event) {
+  void handleKeyEvent(RawKeyEvent? event) {
     // 키 이벤트 처리
-    final key = event.data.logicalKey;
+    final key = event?.data.logicalKey;
     if (event is RawKeyDownEvent) {
       if (key == LogicalKeyboardKey.keyZ) {
         zKey = true;
         xKey = false;
+        setState(() {
+          choiceButton = true;
+        });
       }
       if (key == LogicalKeyboardKey.keyX) {
         xKey = true;
         zKey = false;
+        setState(() {
+          choiceButton = false;
+        });
       }
       if (key == LogicalKeyboardKey.arrowUp ||
           key == LogicalKeyboardKey.arrowDown ||
@@ -123,11 +145,6 @@ class _GameBoardState extends State<GameBoard> {
         keyStringControl("Z");
       } else if (xKey && !zKey) {
         keyStringControl("X");
-      }
-
-      if (key == LogicalKeyboardKey.keyC) {
-        print("cpzm");
-        _checkBoardLine();
       }
     }
     if (event is RawKeyUpEvent) {
@@ -172,13 +189,12 @@ class _GameBoardState extends State<GameBoard> {
         }
         break;
     }
-    print("$currentRow, $currentCol");
     cursor(currentRow, currentCol, true, false);
   }
 
   void keyStringControl(String key) {
     switch (key) {
-      case "Z":
+      case "Z" || "LEFT":
         if (stageCheck[currentRow][currentCol] == 0) {
           if (stageDataList[currentRow][currentCol] != 0) {
             stageCheck[currentRow][currentCol] = 3;
@@ -190,7 +206,7 @@ class _GameBoardState extends State<GameBoard> {
           }
         }
         break;
-      case "X":
+      case "X" || "RIGHT":
         if (stageCheck[currentRow][currentCol] == 0) {
           stageCheck[currentRow][currentCol] = 1;
         } else if (stageCheck[currentRow][currentCol] == 1) {
@@ -267,7 +283,7 @@ class _GameBoardState extends State<GameBoard> {
     }
   }
 
-  void finishCheck(){
+  void finishCheck() {
     bool check = true;
     for (int a = 0; a < stageSize; a++) {
       for (int b = 0; b < stageSize; b++) {
@@ -282,12 +298,37 @@ class _GameBoardState extends State<GameBoard> {
     }
   }
 
-  void touchControl(int touchRow, int touchCol) {
+  void mouseInputControl(String lr, String ud) {
+    if (lr == "LEFT") {
+      if (ud == "UP") {
+        zKey = false;
+      } else {
+        xKey = false;
+        zKey = true;
+        keyStringControl(lr);
+      }
+    } else {
+      if (ud == "UP") {
+        xKey = false;
+      } else {
+        zKey = false;
+        xKey = true;
+        keyStringControl(lr);
+      }
+    }
+  }
+
+  void mouseHoverControl(int hoverRow, int hoverCol) {
     cursor(currentRow, currentCol, false, false);
-    cursor(touchRow, touchCol, true, false);
-    currentRow = touchRow;
-    currentCol = touchCol;
-    print("ROW $touchRow COL $touchCol");
+    cursor(hoverRow, hoverCol, true, false);
+    currentRow = hoverRow;
+    currentCol = hoverCol;
+
+    if (zKey) {
+      keyStringControl("LEFT");
+    } else if (xKey) {
+      keyStringControl("RIGHT");
+    }
   }
 
   void _checkBoardNum() {
@@ -335,8 +376,6 @@ class _GameBoardState extends State<GameBoard> {
       if (checkRow == positionsListRow.length && positionsListRow.isNotEmpty) {
         newNumRow[countRow].check = true;
       }
-      //print(checkCol);
-      print("$positionsListCol $positionsListRow");
     });
   }
 
@@ -389,7 +428,8 @@ class _GameBoardState extends State<GameBoard> {
     }
   }
 
-  List<Widget> _settingNumRow(double wSize) {
+  void _settingNumRow() {
+    Color containerColor;
     List<int> positions = [];
     List<bool> check = [];
     newRow = List.filled(stageSize, Container());
@@ -406,12 +446,18 @@ class _GameBoardState extends State<GameBoard> {
         positions.add(0);
         check.add(true);
       }
+
+      if (index == currentCol) {
+        containerColor = Colors.blue;
+      } else {
+        containerColor = Colors.blueGrey;
+      }
       newRow[index] = Container(
-          width: (wSize * 3) / stageSize,
+          width: (bodySize * 3) / stageSize,
           alignment: Alignment.bottomCenter,
-          decoration: const BoxDecoration(
-            color: Colors.blueGrey,
-            border: Border(
+          decoration: BoxDecoration(
+            color: containerColor,
+            border: const Border(
               left: BorderSide(width: 0.5),
               right: BorderSide(width: 0.5),
             ),
@@ -419,14 +465,13 @@ class _GameBoardState extends State<GameBoard> {
           child: RichText(
               textAlign: TextAlign.center,
               text: TextSpan(
-                  children: buildTextSpan(positions, wSize, "Row", check)))
-          //Text("$index 입니다.",style: TextStyle(fontSize: (size / 12),color: Colors.yellowAccent),),
-          );
+                  children:
+                      buildTextSpan(positions, bodySize, "Row", check))));
     }
-    return newRow;
   }
 
-  List<Widget> _settingNumCol(double wSize) {
+  void _settingNumCol() {
+    Color containerColor;
     List<int> positions = [];
     List<bool> check = [];
     newCol = List.filled(stageSize, Container());
@@ -443,24 +488,27 @@ class _GameBoardState extends State<GameBoard> {
         positions.add(0);
         check.add(true);
       }
+      if (index == currentRow) {
+        containerColor = Colors.blue;
+      } else {
+        containerColor = Colors.blueGrey;
+      }
 
       newCol[index] = Container(
-          height: (wSize * 3) / stageSize,
+          height: (bodySize * 3) / stageSize,
           alignment: Alignment.centerRight,
-          decoration: const BoxDecoration(
-            color: Colors.blueGrey,
-            border: Border(
+          decoration: BoxDecoration(
+            color: containerColor,
+            border: const Border(
               top: BorderSide(width: 0.5),
               bottom: BorderSide(width: 0.5),
             ),
           ),
           child: RichText(
               text: TextSpan(
-                  children: buildTextSpan(positions, wSize, "Col", check)))
-          //Text("$index 입니다.",style: TextStyle(fontSize: (size / 12),color: Colors.yellowAccent),),
-          );
+                  children:
+                      buildTextSpan(positions, bodySize, "Col", check))));
     }
-    return newCol;
   }
 
   void _initializeMainBoard() {
@@ -504,17 +552,54 @@ class _GameBoardState extends State<GameBoard> {
     mainBoard = newBackgroundBoard;
   }
 
+  void buttonDisabled(bool disable) {
+    setState(() {
+      if (disable) {
+        choiceButton = false;
+      } else {
+        choiceButton = true;
+      }
+      print(choiceButton);
+    });
+  }
+
+  void buttonClick(String UpDown) {
+    if (choiceButton) {
+      mouseInputControl("LEFT", UpDown);
+    } else {
+      mouseInputControl("RIGHT", UpDown);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     Size screenSize = MediaQuery.of(context).size;
-    double widgetSize = (getScreeningSize(screenSize)) / 4;
+    double windowSize = (getScreeningSize(screenSize));
+    double appbarSize = MediaQuery.of(context).padding.top + kToolbarHeight;
+    bodySize = (windowSize - appbarSize) / 4 ;
+    _settingNumRow();
+    _settingNumCol();
+
+
 
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.greenAccent,
+        title: Text(
+          "Stage$stageNumber h : $appbarSize w : ${screenSize.width}",
+          style: TextStyle(fontSize: bodySize / 7), textAlign: TextAlign.center,
+        ),
+        centerTitle: true,
+      ),
       body: Center(
-        child: MyKeyboardListener(
-          onKeyEvent: handleKeyEvent,
-          child: Focus(
-            autofocus: true,
+        child: GestureDetector(
+          onSecondaryTap: () {
+            setState(() {
+              choiceButton = !choiceButton;
+            });
+          },
+          child: MyKeyboardListener(
+            onKeyEvent: handleKeyEvent,
             child: SingleChildScrollView(
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -523,45 +608,102 @@ class _GameBoardState extends State<GameBoard> {
                     Row(
                       children: [
                         Container(
-                          height: widgetSize,
-                          width: widgetSize,
-                          color: Colors.redAccent,
-                          child: Text(
-                              "size: $widgetSize hegit: ${screenSize.height} wight: ${screenSize.width}"),
-                        ),
-                        SingleChildScrollView(
-                          child: SizedBox(
-                            height: widgetSize,
-                            width: widgetSize * 3,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: stageSize,
-                              itemBuilder: (context, index) {
-                                return _settingNumRow(widgetSize)[index];
-                                //Text("$index 입니다.",style: TextStyle(fontSize: (size / 12),color: Colors.yellowAccent),),
-                              },
+                            height: bodySize,
+                            width: bodySize,
+                            color: Colors.redAccent,
+                            child: Column(
+                              children: [
+                                SizedBox(
+                                  height: bodySize / 4,
+                                  child: Align(
+                                      alignment: Alignment.bottomCenter,
+                                      child: Text("Life", style: TextStyle(fontSize: bodySize / 9),)),
+                                ),
+                                SizedBox(
+                                  height: bodySize / 4,
+                                  child: Align(
+                                    alignment: Alignment.topCenter,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.favorite),
+                                        Icon(Icons.favorite),
+                                        Icon(Icons.favorite),
+                                        Icon(Icons.favorite),
+                                        Icon(Icons.favorite),
+                                      ],
+                                    ),
+                                  )
+                                ),
+                                Container(
+                                  height: (bodySize / 2) - (bodySize / 30),
+                                  width: bodySize - (bodySize / 20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.brown,
+                                    borderRadius: BorderRadius.circular(bodySize / 2),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      MyButton(
+                                        buttonSize: bodySize,
+                                        icon: Icons.radio_button_off,
+                                        iconSize: bodySize / 11,
+                                        onPressed: choiceButton
+                                            ? null
+                                            : () {
+                                                buttonDisabled(false);
+                                              },
+                                      ),
+                                      MyButton(
+                                        buttonSize: bodySize,
+                                        icon: Icons.close,
+                                        iconSize: bodySize / 11,
+                                        onPressed: choiceButton
+                                            ? () {
+                                                buttonDisabled(true);
+                                              }
+                                            : null,
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              ],
+                            )
+                            //Text(
+                            //    "size: $bodySize hegit: ${screenSize.height} wight: ${screenSize.width}"),
                             ),
+                        SizedBox(
+                          height: bodySize,
+                          width: bodySize * 3,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: stageSize,
+                            itemBuilder: (context, index) {
+                              return newRow[index];
+                              //_settingNumRow(bodySize)[index];
+                              //Text("$index 입니다.",style: TextStyle(fontSize: (size / 12),color: Colors.yellowAccent),),
+                            },
                           ),
                         ),
                       ],
                     ),
                     Row(
                       children: [
-                        SingleChildScrollView(
-                          child: SizedBox(
-                            height: widgetSize * 3,
-                            width: widgetSize,
-                            child: ListView.builder(
-                              itemCount: stageSize,
-                              itemBuilder: (context, index) {
-                                return _settingNumCol(widgetSize)[index];
-                              },
-                            ),
+                        SizedBox(
+                          height: bodySize * 3,
+                          width: bodySize,
+                          child: ListView.builder(
+                            itemCount: stageSize,
+                            itemBuilder: (context, index) {
+                              return newCol[index];
+                            },
                           ),
                         ),
                         SizedBox(
-                          height: widgetSize * 3,
-                          width: widgetSize * 3,
+                          height: bodySize * 3,
+                          width: bodySize * 3,
                           child: GridView.builder(
                             itemCount: stageSize * stageSize,
                             physics: const NeverScrollableScrollPhysics(),
@@ -572,10 +714,20 @@ class _GameBoardState extends State<GameBoard> {
                               int row = index ~/ stageSize;
                               int col = index % stageSize;
 
-                              return GestureDetector(
-                                  onTap: () => touchControl(row, col),
-                                  onSecondaryTap: () => touchControl(row, col),
-                                  child: mainBoard[row][col]);
+                              return MouseRegion(
+                                onEnter: (event) {
+                                  setState(() {
+                                    mouseHoverControl(row, col);
+                                  });
+                                },
+                                child: GestureDetector(
+                                    onTapDown: (details) => buttonClick("DOWN"),
+                                    onPanStart: (details) =>
+                                        buttonClick("DOWN"),
+                                    onTapUp: (details) => buttonClick("UP"),
+                                    onPanEnd: (details) => buttonClick("UP"),
+                                    child: mainBoard[row][col]),
+                              );
                             },
                           ),
                         ),

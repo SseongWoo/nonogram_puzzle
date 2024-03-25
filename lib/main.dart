@@ -14,7 +14,6 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      //home: GameBoard(),
       home: TestScreen(),
     );
   }
@@ -23,27 +22,28 @@ class MyApp extends StatelessWidget {
 class TestScreen extends StatelessWidget {
   List<List<int>>? stageDataList;
   int? stageHW;
+  int stageNum = 3;
 
   @override
   Widget build(BuildContext context) {
-    Size screenSize = MediaQuery.of(context).size;
+    Size windowSize = MediaQuery.of(context).size;
 
     return Scaffold(
       body: Center(
         child: ElevatedButton(
           onPressed: (){
             pushData();
-            Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) => GameBoard(deliveryData: StageData(3,stageHW!,stageDataList!)),));
+            Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) => GameBoard(deliveryData: StageData(stageNum,stageHW!,stageDataList!)),));
             //print("1 = $stageDataList 2 = $stageHW");
           },
-          child: Text("next ${(screenSize.width / 40).roundToDouble() * 40}"),
+          child: Text("next ${(windowSize.width / 40).roundToDouble() * 40}"),
         ),
       ),
     );
   }
 
   void pushData(){
-    stageDataList = stageData[3]!;
+    stageDataList = stageData[stageNum]!;
     stageHW = stageDataList!.length;
   }
 }
