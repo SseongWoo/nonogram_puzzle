@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:nonogram_puzzle/components/stage_data.dart';
-import 'package:nonogram_puzzle/components/stage_data_class.dart';
-import 'game_board.dart';
+import 'package:nonogram_puzzle/class/stage_data.dart';
+import 'class/stage_data_class.dart';
+import 'stage.dart';
 
 void main(){
   runApp(const MyApp());

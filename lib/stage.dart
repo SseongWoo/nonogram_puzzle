@@ -1,22 +1,30 @@
-import 'dart:ui';
+library board_common_data;
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
-import 'package:nonogram_puzzle/components/block.dart';
-import 'package:nonogram_puzzle/components/border_setting.dart';
-import 'package:nonogram_puzzle/components/buttonData.dart';
-import 'package:nonogram_puzzle/components/stage_data_class.dart';
-import 'package:nonogram_puzzle/components/stage_number.dart';
-import 'components/block_color.dart';
-import 'components/key_control.dart';
-import 'components/stage_size.dart';
+import 'package:nonogram_puzzle/class/stage_board_block.dart';
+import 'package:nonogram_puzzle/class/stage_board_block_border_setting.dart';
+import 'package:nonogram_puzzle/class/stage_button_change.dart';
+import 'package:nonogram_puzzle/class/stage_data_class.dart';
+import 'package:nonogram_puzzle/class/stage_number.dart';
+import 'class/stage_board_block_color.dart';
+import 'function/stage_dialog_function.dart';
+import 'class/stage_drawer_menu.dart';
+import 'class/stage_key_control.dart';
+import 'class/stage_size.dart';
+import 'function/stage_board_function.dart';
+import 'function/stage_side_function.dart';
 
-//라이프, 승리이벤트, 메뉴버튼, 시간 혹은 점수, 마우스 조작
+/*
+1. 주석 작업
+2. 변수들 이동 작업 및 변수 이름 변경
+3. 함수들 이동 작업 및 함수 이름 변경
+4. 힌트기능 추가
+ */
+
 
 class GameBoard extends StatefulWidget {
-  final StageData deliveryData;
+  final StageData deliveryData;     // 외부에서 가져온 데이터들의 클래스데이터
 
   const GameBoard({super.key, required this.deliveryData});
 
@@ -25,34 +33,33 @@ class GameBoard extends StatefulWidget {
 }
 
 class _GameBoardState extends State<GameBoard> {
-  late List<List<Widget?>> mainBoard;
-  late List<List<int>> stageDataList;
 
-  // 0 : 기본상태(회색) 1 : 사용자가 x를 누른 상태(회색X 이미지 생성) 2 : 사용자가 정답을 틀린 상태(빨간색 X이미지 생성) 3 : 사용자가 정답을 맞춘 상태
-  late List<List<int>> stageCheck;
+  List<List<Widget?>> mainBoard = [];   // 화면에 보이게 될 메인 보드 이중 리스트
+  List<Widget> topBoard = [];   // 화면에 보이게 될 상단 보드 리스트
+  List<Widget> leftBoard = [];   // 화면에 보이게 될 왼쪽 보드 리스트
+  List<Widget> lifeList = []; // 생명이 몇개 남았는지 화면에 보여주기 위한 리스트
 
-  late int stageSize;
-  late int stageNumber;
-  late double bodySize;
+// 0 : 기본상태(회색) 1 : 사용자가 x를 누른 상태(회색X 이미지 생성) 2 : 사용자가 정답을 틀린 상태(빨간색 X이미지 생성) 3 : 사용자가 정답을 맞춘 상태
+// 사용자가 해당 블록에 행동한 기록을 가지고 있는 이중 리스트
+  List<List<int>> stageCheck = [];
+  List<List<int>> stageDataList = [];   // 외부에서 가져온 숫자로 구성된 데이터로 색 정보를 가지고 있는 이중 리스트
+  List<LineNumClass> topBoardData = [];    //보드 상단에 위치한 보드의 숫자 데이터를 보여주는 리스트
+  List<LineNumClass> leftBoardData = [];    //보드 좌측에 위치한 보드의 숫자 데이터를 보여주는 리스트
 
-  List<LineNumClass> newNumRow = [];
-  List<LineNumClass> newNumCol = [];
+  int stageSize = 0;   //보드의 크기를 정하기 위해 외부에서 가져온 변수
+  int stageNumber = 0; //해당 스테이지의 번호를 외부에서 가져온 변수
+  double bodySize = 0.0; //해당 화면의 Scaffold의 body의 크기를 가지고 있는 변수
 
-  late List<Widget> newRow;
-  late List<Widget> newCol;
+  int life = 5;   // 해당 보드 게임의 생명 개수
 
-  int currentRow = 0;
-  int currentCol = 0;
+  int currentRow = 0; //현재 커서의 row 위치 변수
+  int currentCol = 0; //현재 커서의 col 위치 변수
 
-  int selectedRow = 0;
-  int selectedCol = 0;
+  double selectBorder = 2.0;  // 커서의 외곽선 두께 변수
 
-  double selectBorder = 2.0;
-  late double containerSize;
-
-  bool zKey = false;
-  bool xKey = false;
-  bool choiceButton = true;
+  bool zKey = false;  // z키가 눌려있는지 확인하는 변수
+  bool xKey = false;  // x키가 눌려있는지 확인하는 변수
+  bool choiceButton = true; // 마우스로 조작할 때 좌클릭으로 z,x버튼을 사용할수 있도록 우클릭으로 조작하는 변수
 
   @override
   void initState() {
@@ -64,20 +71,36 @@ class _GameBoardState extends State<GameBoard> {
       stageSize,
       (index) => List<int>.filled(stageSize, 0),
     );
-    _newGetLineNumRow();
-    _newGetLineNumCol();
-    _initializeMainBoard();
-    _checkBoardLine();
+    topBoardData = settingTopBoard(stageSize,stageDataList);
+    leftBoardData = settingLeftBoard(stageSize,stageDataList);
+    mainBoard = initializeMainBoard(stageSize,stageCheck,stageDataList,currentRow,currentCol,selectBorder);
+    checkMainBoard();
+    initializeLifeBoard();
   }
 
-  void saveData(){
+  //데이터를 외부에 저장하는 함수
+  void _saveData(){
 
   }
-  void loadData(){
+
+  //저장된 데이터를 불러오는 함수
+  void _loadData(){
 
   }
 
-  void cursor(int row, int col, bool check, bool img) {
+  // 생명이 몇개 남아있는지 표시해주는 함수
+  void initializeLifeBoard(){
+    List<Widget> newLife = [];
+    for(int i = 0; i < life; i++){
+      newLife.add(
+        const Icon(Icons.favorite, color: Colors.blue,)
+      );
+    }
+    lifeList = newLife;
+  }
+
+  // 메인 보드의 블록들을 설정하는 함수
+  void blockPieceSetting(int row, int col, bool check, bool img) {
     setState(() {
       BackgroundBlockClass blockClass =
           getBackgroundColor(stageCheck[row][col], stageDataList[row][col]);
@@ -113,8 +136,8 @@ class _GameBoardState extends State<GameBoard> {
     });
   }
 
-  void handleKeyEvent(RawKeyEvent? event) {
-    // 키 이벤트 처리
+  // 입력된 키의 이벤트를 처리하는 함수
+  void keyEvent(RawKeyEvent? event) {
     final key = event?.data.logicalKey;
     if (event is RawKeyDownEvent) {
       if (key == LogicalKeyboardKey.keyZ) {
@@ -157,8 +180,9 @@ class _GameBoardState extends State<GameBoard> {
     }
   }
 
+  // 입력된 키의 이벤트 중 방향키 이동을 처리하는 함수
   void keyArrowControl(final key) {
-    cursor(currentRow, currentCol, false, false);
+    blockPieceSetting(currentRow, currentCol, false, false);
     switch (key) {
       case LogicalKeyboardKey.arrowUp:
         if (currentRow == 0) {
@@ -189,20 +213,25 @@ class _GameBoardState extends State<GameBoard> {
         }
         break;
     }
-    cursor(currentRow, currentCol, true, false);
+    blockPieceSetting(currentRow, currentCol, true, false);
   }
 
+  // 입려된 키의 이벤트 중 z키,x키,마우스 좌클릭을 처리하는 함수
   void keyStringControl(String key) {
     switch (key) {
       case "Z" || "LEFT":
         if (stageCheck[currentRow][currentCol] == 0) {
           if (stageDataList[currentRow][currentCol] != 0) {
             stageCheck[currentRow][currentCol] = 3;
-            _checkBoardNum();
-            _checkBoardLine();
-            finishCheck();
+            checkNumberBoard();
+            checkMainBoard();
+            gameClearEvent();
           } else {
             stageCheck[currentRow][currentCol] = 2;
+            lifeList.removeLast();
+            if(lifeList.isEmpty){
+              gameOverEvent();
+            }
           }
         }
         break;
@@ -214,76 +243,79 @@ class _GameBoardState extends State<GameBoard> {
         }
         break;
     }
-    cursor(currentRow, currentCol, true, false);
+    blockPieceSetting(currentRow, currentCol, true, false);
   }
 
-  void _newGetLineNumCol() {
-    LineNumClass lineNum;
-    List<int> position;
-    int sum, count;
-    for (int row = 0; row < stageSize; row++) {
-      sum = 0;
-      count = 0;
-      position = [];
-      for (int col = 0; col < stageSize; col++) {
-        if (col == stageSize - 1) {
-          if (stageDataList[row][col] != 0) {
-            position.add(col);
-            sum++;
-          }
-          if (sum != 0) {
-            lineNum = LineNumClass(row, count, sum, position, false);
-            newNumCol.add(lineNum);
-            position = [];
-          }
-        } else if (stageDataList[row][col] == 0 && sum != 0) {
-          lineNum = LineNumClass(row, count, sum, position, false);
-          newNumCol.add(lineNum);
-          position = [];
-          count++;
-          sum = 0;
-        } else if (stageDataList[row][col] != 0) {
-          position.add(col);
-          sum++;
-        }
-      }
-    }
-  }
+  // 보드의 가로줄의 숫자를 숫자보드에 표시하기 위해 처리하는 함수
+  // void settingLeftBoard() {
+  //   LineNumClass lineNum;
+  //   List<int> position;
+  //   int sum, count;
+  //   for (int row = 0; row < stageSize; row++) {
+  //     sum = 0;
+  //     count = 0;
+  //     position = [];
+  //     for (int col = 0; col < stageSize; col++) {
+  //       if (col == stageSize - 1) {
+  //         if (stageDataList[row][col] != 0) {
+  //           position.add(col);
+  //           sum++;
+  //         }
+  //         if (sum != 0) {
+  //           lineNum = LineNumClass(row, count, sum, position, false);
+  //           leftBoardData.add(lineNum);
+  //           position = [];
+  //         }
+  //       } else if (stageDataList[row][col] == 0 && sum != 0) {
+  //         lineNum = LineNumClass(row, count, sum, position, false);
+  //         leftBoardData.add(lineNum);
+  //         position = [];
+  //         count++;
+  //         sum = 0;
+  //       } else if (stageDataList[row][col] != 0) {
+  //         position.add(col);
+  //         sum++;
+  //       }
+  //     }
+  //   }
+  // }
 
-  void _newGetLineNumRow() {
-    LineNumClass lineNum;
-    List<int> position;
-    int sum, count;
-    for (int col = 0; col < stageSize; col++) {
-      sum = 0;
-      count = 0;
-      position = [];
-      for (int row = 0; row < stageSize; row++) {
-        if (row == stageSize - 1) {
-          if (stageDataList[row][col] != 0) {
-            position.add(row);
-            sum++;
-          }
-          if (sum != 0) {
-            lineNum = LineNumClass(col, count, sum, position, false);
-            newNumRow.add(lineNum);
-            position = [];
-          }
-        } else if (stageDataList[row][col] == 0 && sum != 0) {
-          lineNum = LineNumClass(col, count, sum, position, false);
-          newNumRow.add(lineNum);
-          position = [];
-          count++;
-          sum = 0;
-        } else if (stageDataList[row][col] != 0) {
-          position.add(row);
-          sum++;
-        }
-      }
-    }
-  }
+  // // 보드의 세로줄의 숫자를 숫자보드에 표시하기 위해 처리하는 함수
+  // void settingTopBoard() {
+  //   LineNumClass lineNum;
+  //   List<int> position;
+  //   int sum, count;
+  //   for (int col = 0; col < stageSize; col++) {
+  //     sum = 0;
+  //     count = 0;
+  //     position = [];
+  //     for (int row = 0; row < stageSize; row++) {
+  //       if (row == stageSize - 1) {
+  //         if (stageDataList[row][col] != 0) {
+  //           position.add(row);
+  //           sum++;
+  //         }
+  //         if (sum != 0) {
+  //           lineNum = LineNumClass(col, count, sum, position, false);
+  //           topBoardData.add(lineNum);
+  //           position = [];
+  //         }
+  //       } else if (stageDataList[row][col] == 0 && sum != 0) {
+  //         lineNum = LineNumClass(col, count, sum, position, false);
+  //         topBoardData.add(lineNum);
+  //         position = [];
+  //         count++;
+  //         sum = 0;
+  //       } else if (stageDataList[row][col] != 0) {
+  //         position.add(row);
+  //         sum++;
+  //       }
+  //     }
+  //   }
+  // }
 
-  void finishCheck() {
+  // 게임 클리어 조건을 검사해서 처리하는 함수
+  void gameClearEvent() {
     bool check = true;
     for (int a = 0; a < stageSize; a++) {
       for (int b = 0; b < stageSize; b++) {
@@ -294,10 +326,16 @@ class _GameBoardState extends State<GameBoard> {
       }
     }
     if (check) {
-      print("stage clear!!");
+      gameClearDialog(context);
     }
   }
 
+  // 라이프가 다 깎였을 시 다이얼로그를 실행시켜주는 함수
+  void gameOverEvent(){
+    gameOverDialog(context, widget.deliveryData);
+  }
+
+  // 마우스 왼쪽 오른쪽 클릭 이벤트를 처리하는 함수
   void mouseInputControl(String lr, String ud) {
     if (lr == "LEFT") {
       if (ud == "UP") {
@@ -318,9 +356,10 @@ class _GameBoardState extends State<GameBoard> {
     }
   }
 
+  // 마우스를 보드 위에 올렸을시에 이벤트를 처리하는 함수
   void mouseHoverControl(int hoverRow, int hoverCol) {
-    cursor(currentRow, currentCol, false, false);
-    cursor(hoverRow, hoverCol, true, false);
+    blockPieceSetting(currentRow, currentCol, false, false);
+    blockPieceSetting(hoverRow, hoverCol, true, false);
     currentRow = hoverRow;
     currentCol = hoverCol;
 
@@ -331,7 +370,8 @@ class _GameBoardState extends State<GameBoard> {
     }
   }
 
-  void _checkBoardNum() {
+  // 보드를 체크하여 숫자보드의 숫자의 처리유무를 처리하는 함수
+  void checkNumberBoard() {
     List<int> positionsListCol = [];
     List<int> positionsListRow = [];
 
@@ -340,7 +380,7 @@ class _GameBoardState extends State<GameBoard> {
       int countRow = 0;
       int checkCol = 0;
       int checkRow = 0;
-      for (var lineNum in newNumCol) {
+      for (var lineNum in leftBoardData) {
         if (lineNum.line == currentRow &&
             lineNum.position.contains(currentCol)) {
           positionsListCol.addAll(lineNum.position);
@@ -349,7 +389,7 @@ class _GameBoardState extends State<GameBoard> {
         countCol++;
       }
 
-      for (var lineNum in newNumRow) {
+      for (var lineNum in topBoardData) {
         if (lineNum.line == currentCol &&
             lineNum.position.contains(currentRow)) {
           positionsListRow.addAll(lineNum.position);
@@ -364,7 +404,7 @@ class _GameBoardState extends State<GameBoard> {
         }
       }
       if (checkCol == positionsListCol.length && positionsListCol.isNotEmpty) {
-        newNumCol[countCol].check = true;
+        leftBoardData[countCol].check = true;
       }
 
       for (int i in positionsListRow) {
@@ -374,12 +414,13 @@ class _GameBoardState extends State<GameBoard> {
       }
 
       if (checkRow == positionsListRow.length && positionsListRow.isNotEmpty) {
-        newNumRow[countRow].check = true;
+        topBoardData[countRow].check = true;
       }
     });
   }
 
-  void _checkBoardLine() {
+  // 보드의 가로 혹은 세로줄에서 더이상 맞출 칸이 없을시 나머지칸을 회색 X자로 채워지게 처리하는 함수
+  void checkMainBoard() {
     bool checkCol;
     bool checkRow;
 
@@ -396,9 +437,9 @@ class _GameBoardState extends State<GameBoard> {
           if (stageCheck[a][b] == 0) {
             stageCheck[a][b] = 1;
             if (a == currentRow && b == currentCol) {
-              cursor(a, b, true, true);
+              blockPieceSetting(a, b, true, true);
             } else {
-              cursor(a, b, false, true);
+              blockPieceSetting(a, b, false, true);
             }
           }
         }
@@ -418,9 +459,9 @@ class _GameBoardState extends State<GameBoard> {
           if (stageCheck[b][a] == 0) {
             stageCheck[b][a] = 1;
             if (b == currentRow && a == currentCol) {
-              cursor(b, a, true, true);
+              blockPieceSetting(b, a, true, true);
             } else {
-              cursor(b, a, false, true);
+              blockPieceSetting(b, a, false, true);
             }
           }
         }
@@ -428,146 +469,150 @@ class _GameBoardState extends State<GameBoard> {
     }
   }
 
-  void _settingNumRow() {
-    Color containerColor;
-    List<int> positions = [];
-    List<bool> check = [];
-    newRow = List.filled(stageSize, Container());
-    for (int index = 0; index < stageSize; index++) {
-      positions = newNumRow
-          .where((lineNum) => lineNum.line == index)
-          .map((lineNum) => lineNum.number)
-          .toList();
-      check = newNumRow
-          .where((lineNum) => lineNum.line == index)
-          .map((lineNum) => lineNum.check)
-          .toList();
-      if (positions.isEmpty) {
-        positions.add(0);
-        check.add(true);
-      }
+  // // 위쪽 숫자보드의 숫자를 배치하여 처리하는 함수
+  // void initializeTopBoard() {
+  //   Color containerColor;
+  //   List<int> positions = [];
+  //   List<bool> check = [];
+  //   topBoard = List.filled(stageSize, Container());
+  //   for (int index = 0; index < stageSize; index++) {
+  //     positions = topBoardData
+  //         .where((lineNum) => lineNum.line == index)
+  //         .map((lineNum) => lineNum.number)
+  //         .toList();
+  //     check = topBoardData
+  //         .where((lineNum) => lineNum.line == index)
+  //         .map((lineNum) => lineNum.check)
+  //         .toList();
+  //     if (positions.isEmpty) {
+  //       positions.add(0);
+  //       check.add(true);
+  //     }
+  //
+  //     if (index == currentCol) {
+  //       containerColor = Colors.blue;
+  //     } else {
+  //       containerColor = Colors.blueGrey;
+  //     }
+  //     topBoard[index] = Container(
+  //         width: (bodySize * 3) / stageSize,
+  //         alignment: Alignment.bottomCenter,
+  //         decoration: BoxDecoration(
+  //           color: containerColor,
+  //           border: const Border(
+  //             left: BorderSide(width: 0.5),
+  //             right: BorderSide(width: 0.5),
+  //           ),
+  //         ),
+  //         child: RichText(
+  //             textAlign: TextAlign.center,
+  //             text: TextSpan(
+  //                 children:
+  //                     buildTextSpan(positions, bodySize, "Row", check))));
+  //   }
+  // }
+  //
+  // // 왼쪽 숫자보드의 숫자를 배치하여 처리하는 함수
+  // void initializeLeftBoard() {
+  //   Color containerColor;
+  //   List<int> positions = [];
+  //   List<bool> check = [];
+  //   leftBoard = List.filled(stageSize, Container());
+  //   for (int index = 0; index < stageSize; index++) {
+  //     positions = leftBoardData
+  //         .where((lineNum) => lineNum.line == index)
+  //         .map((lineNum) => lineNum.number)
+  //         .toList();
+  //     check = leftBoardData
+  //         .where((lineNum) => lineNum.line == index)
+  //         .map((lineNum) => lineNum.check)
+  //         .toList();
+  //     if (positions.isEmpty) {
+  //       positions.add(0);
+  //       check.add(true);
+  //     }
+  //     if (index == currentRow) {
+  //       containerColor = Colors.blue;
+  //     } else {
+  //       containerColor = Colors.blueGrey;
+  //     }
+  //
+  //     leftBoard[index] = Container(
+  //         height: (bodySize * 3) / stageSize,
+  //         alignment: Alignment.centerRight,
+  //         decoration: BoxDecoration(
+  //           color: containerColor,
+  //           border: const Border(
+  //             top: BorderSide(width: 0.5),
+  //             bottom: BorderSide(width: 0.5),
+  //           ),
+  //         ),
+  //         child: RichText(
+  //             text: TextSpan(
+  //                 children:
+  //                     buildTextSpan(positions, bodySize, "Col", check))));
+  //   }
+  // }
 
-      if (index == currentCol) {
-        containerColor = Colors.blue;
-      } else {
-        containerColor = Colors.blueGrey;
-      }
-      newRow[index] = Container(
-          width: (bodySize * 3) / stageSize,
-          alignment: Alignment.bottomCenter,
-          decoration: BoxDecoration(
-            color: containerColor,
-            border: const Border(
-              left: BorderSide(width: 0.5),
-              right: BorderSide(width: 0.5),
-            ),
-          ),
-          child: RichText(
-              textAlign: TextAlign.center,
-              text: TextSpan(
-                  children:
-                      buildTextSpan(positions, bodySize, "Row", check))));
-    }
-  }
+  // //메인 보드를 초기 설정하는 함수
+  // void initializeMainBoard() {
+  //   Color borderColor;
+  //   BorderSettingClass borders = BorderSettingClass(0.0, 0.0, 0.0, 0.0);
+  //   BackgroundBlockClass blockClass;
+  //   List<List<Widget?>> newMainBoard = List.generate(
+  //       stageSize,
+  //       (index) => List.generate(
+  //             stageSize,
+  //             (index) => null,
+  //           ));
+  //   for (int row = 0; row < stageSize; row++) {
+  //     for (int col = 0; col < stageSize; col++) {
+  //       blockClass =
+  //           getBackgroundColor(stageCheck[row][col], stageDataList[row][col]);
+  //       borders = borderSetting(row, col, stageSize);
+  //       borderColor = Colors.black;
+  //       if (row == 0 && col == 0) {
+  //         newMainBoard[currentRow][currentCol] = BoardBlock(
+  //             backgroundColor: blockClass.backgroundColor,
+  //             blockColor: Colors.blueAccent,
+  //             top: selectBorder,
+  //             bottom: selectBorder,
+  //             left: selectBorder,
+  //             right: selectBorder,
+  //             img: blockClass.backgroundImage);
+  //       } else {
+  //         newMainBoard[row][col] = BoardBlock(
+  //           backgroundColor: blockClass.backgroundColor,
+  //           blockColor: borderColor,
+  //           top: borders.borderTop,
+  //           bottom: borders.borderBottom,
+  //           left: borders.borderLeft,
+  //           right: borders.borderRight,
+  //           img: blockClass.backgroundImage,
+  //         );
+  //       }
+  //     }
+  //   }
+  //   mainBoard = newMainBoard;
+  // }
 
-  void _settingNumCol() {
-    Color containerColor;
-    List<int> positions = [];
-    List<bool> check = [];
-    newCol = List.filled(stageSize, Container());
-    for (int index = 0; index < stageSize; index++) {
-      positions = newNumCol
-          .where((lineNum) => lineNum.line == index)
-          .map((lineNum) => lineNum.number)
-          .toList();
-      check = newNumCol
-          .where((lineNum) => lineNum.line == index)
-          .map((lineNum) => lineNum.check)
-          .toList();
-      if (positions.isEmpty) {
-        positions.add(0);
-        check.add(true);
-      }
-      if (index == currentRow) {
-        containerColor = Colors.blue;
-      } else {
-        containerColor = Colors.blueGrey;
-      }
-
-      newCol[index] = Container(
-          height: (bodySize * 3) / stageSize,
-          alignment: Alignment.centerRight,
-          decoration: BoxDecoration(
-            color: containerColor,
-            border: const Border(
-              top: BorderSide(width: 0.5),
-              bottom: BorderSide(width: 0.5),
-            ),
-          ),
-          child: RichText(
-              text: TextSpan(
-                  children:
-                      buildTextSpan(positions, bodySize, "Col", check))));
-    }
-  }
-
-  void _initializeMainBoard() {
-    Color borderColor;
-    BorderSettingClass borders = BorderSettingClass(0.0, 0.0, 0.0, 0.0);
-    BackgroundBlockClass blockClass;
-    List<List<Widget?>> newBackgroundBoard = List.generate(
-        stageSize,
-        (index) => List.generate(
-              stageSize,
-              (index) => null,
-            ));
-    for (int row = 0; row < stageSize; row++) {
-      for (int col = 0; col < stageSize; col++) {
-        blockClass =
-            getBackgroundColor(stageCheck[row][col], stageDataList[row][col]);
-        borders = borderSetting(row, col, stageSize);
-        borderColor = Colors.black;
-        if (row == 0 && col == 0) {
-          newBackgroundBoard[currentRow][currentCol] = BoardBlock(
-              backgroundColor: blockClass.backgroundColor,
-              blockColor: Colors.blueAccent,
-              top: selectBorder,
-              bottom: selectBorder,
-              left: selectBorder,
-              right: selectBorder,
-              img: blockClass.backgroundImage);
-        } else {
-          newBackgroundBoard[row][col] = BoardBlock(
-            backgroundColor: blockClass.backgroundColor,
-            blockColor: borderColor,
-            top: borders.borderTop,
-            bottom: borders.borderBottom,
-            left: borders.borderLeft,
-            right: borders.borderRight,
-            img: blockClass.backgroundImage,
-          );
-        }
-      }
-    }
-    mainBoard = newBackgroundBoard;
-  }
-
-  void buttonDisabled(bool disable) {
+  // 마우스 오른쪽 클릭으로 z,x버튼을 선택하여 사용할 수 있게 하는 함수
+  void mouseButtonDisabled(bool disable) {
     setState(() {
       if (disable) {
         choiceButton = false;
       } else {
         choiceButton = true;
       }
-      print(choiceButton);
     });
   }
 
-  void buttonClick(String UpDown) {
+  // 마우스 왼쪽 버튼을 클릭했을때 처리하는 함수
+  void mouseButtonClick(String upDown) {
     if (choiceButton) {
-      mouseInputControl("LEFT", UpDown);
+      mouseInputControl("LEFT", upDown);
     } else {
-      mouseInputControl("RIGHT", UpDown);
+      mouseInputControl("RIGHT", upDown);
     }
   }
 
@@ -577,16 +622,15 @@ class _GameBoardState extends State<GameBoard> {
     double windowSize = (getScreeningSize(screenSize));
     double appbarSize = MediaQuery.of(context).padding.top + kToolbarHeight;
     bodySize = (windowSize - appbarSize) / 4 ;
-    _settingNumRow();
-    _settingNumCol();
-
-
+    topBoard = initializeTopBoard(stageSize,currentCol,bodySize,topBoardData);
+    leftBoard = initializeLeftBoard(stageSize,currentRow,bodySize,leftBoardData);
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.greenAccent,
+        leading: IconButton(onPressed: () {}, icon: Icon(Icons.arrow_back)),
         title: Text(
-          "Stage$stageNumber h : $appbarSize w : ${screenSize.width}",
+          "Stage$stageNumber",
           style: TextStyle(fontSize: bodySize / 7), textAlign: TextAlign.center,
         ),
         centerTitle: true,
@@ -599,7 +643,7 @@ class _GameBoardState extends State<GameBoard> {
             });
           },
           child: MyKeyboardListener(
-            onKeyEvent: handleKeyEvent,
+            onKeyEvent: keyEvent,
             child: SingleChildScrollView(
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -625,13 +669,7 @@ class _GameBoardState extends State<GameBoard> {
                                     alignment: Alignment.topCenter,
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.favorite),
-                                        Icon(Icons.favorite),
-                                        Icon(Icons.favorite),
-                                        Icon(Icons.favorite),
-                                        Icon(Icons.favorite),
-                                      ],
+                                      children:lifeList,
                                     ),
                                   )
                                 ),
@@ -653,7 +691,7 @@ class _GameBoardState extends State<GameBoard> {
                                         onPressed: choiceButton
                                             ? null
                                             : () {
-                                                buttonDisabled(false);
+                                                mouseButtonDisabled(false);
                                               },
                                       ),
                                       MyButton(
@@ -662,7 +700,7 @@ class _GameBoardState extends State<GameBoard> {
                                         iconSize: bodySize / 11,
                                         onPressed: choiceButton
                                             ? () {
-                                                buttonDisabled(true);
+                                                mouseButtonDisabled(true);
                                               }
                                             : null,
                                       ),
@@ -671,8 +709,6 @@ class _GameBoardState extends State<GameBoard> {
                                 )
                               ],
                             )
-                            //Text(
-                            //    "size: $bodySize hegit: ${screenSize.height} wight: ${screenSize.width}"),
                             ),
                         SizedBox(
                           height: bodySize,
@@ -681,9 +717,7 @@ class _GameBoardState extends State<GameBoard> {
                             scrollDirection: Axis.horizontal,
                             itemCount: stageSize,
                             itemBuilder: (context, index) {
-                              return newRow[index];
-                              //_settingNumRow(bodySize)[index];
-                              //Text("$index 입니다.",style: TextStyle(fontSize: (size / 12),color: Colors.yellowAccent),),
+                              return topBoard[index];
                             },
                           ),
                         ),
@@ -697,7 +731,7 @@ class _GameBoardState extends State<GameBoard> {
                           child: ListView.builder(
                             itemCount: stageSize,
                             itemBuilder: (context, index) {
-                              return newCol[index];
+                              return leftBoard[index];
                             },
                           ),
                         ),
@@ -721,11 +755,11 @@ class _GameBoardState extends State<GameBoard> {
                                   });
                                 },
                                 child: GestureDetector(
-                                    onTapDown: (details) => buttonClick("DOWN"),
+                                    onTapDown: (details) => mouseButtonClick("DOWN"),
                                     onPanStart: (details) =>
-                                        buttonClick("DOWN"),
-                                    onTapUp: (details) => buttonClick("UP"),
-                                    onPanEnd: (details) => buttonClick("UP"),
+                                        mouseButtonClick("DOWN"),
+                                    onTapUp: (details) => mouseButtonClick("UP"),
+                                    onPanEnd: (details) => mouseButtonClick("UP"),
                                     child: mainBoard[row][col]),
                               );
                             },
@@ -740,6 +774,7 @@ class _GameBoardState extends State<GameBoard> {
           ),
         ),
       ),
+      endDrawer: stageSettingMenu(context),
     );
   }
 }
