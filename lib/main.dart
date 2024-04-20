@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:nonogram_puzzle/class/stage_data.dart';
-import 'class/stage_data_class.dart';
-import 'stage.dart';
+import 'main_menu.dart';
 
-void main(){
+
+void main() {
   runApp(const MyApp());
 }
 
@@ -14,36 +13,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: TestScreen(),
+      home: const MainMenu(),
+      theme: ThemeData(fontFamily: 'Nanum'),
+      themeMode: ThemeMode.system,
     );
-  }
-}
-
-class TestScreen extends StatelessWidget {
-  List<List<int>>? stageDataList;
-  int? stageHW;
-  int stageNum = 3;
-
-  @override
-  Widget build(BuildContext context) {
-    Size windowSize = MediaQuery.of(context).size;
-
-    return Scaffold(
-      body: Center(
-        child: ElevatedButton(
-          onPressed: (){
-            pushData();
-            Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) => GameBoard(deliveryData: StageData(stageNum,stageHW!,stageDataList!)),));
-            //print("1 = $stageDataList 2 = $stageHW");
-          },
-          child: Text("next ${(windowSize.width / 40).roundToDouble() * 40}"),
-        ),
-      ),
-    );
-  }
-
-  void pushData(){
-    stageDataList = stageData[stageNum]!;
-    stageHW = stageDataList!.length;
   }
 }

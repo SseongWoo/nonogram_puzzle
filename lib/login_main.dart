@@ -1,8 +1,6 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
+import 'package:nonogram_puzzle/main_menu.dart';
 
-import 'main.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -129,7 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: TextButton(onPressed: () {
                     Navigator.pushAndRemoveUntil(
                       context,
-                      MaterialPageRoute(builder: (context) => TestScreen()),
+                      MaterialPageRoute(builder: (context) => const MainMenu()),
                           (route) => false,
                     );
                   }, child: RichText(
